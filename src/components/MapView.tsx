@@ -61,6 +61,22 @@ const dummyStations = [
   }
 ];
 
+// Get stations from localStorage or use dummy data if not found
+const getStations = () => {
+  try {
+    const stations = localStorage.getItem('refillia-stations');
+    if (stations) {
+      // Merge dummy data with stored stations
+      const storedStations = JSON.parse(stations);
+      return [...dummyStations, ...storedStations];
+    }
+    return dummyStations;
+  } catch (error) {
+    console.error('Error reading stations from localStorage:', error);
+    return dummyStations;
+  }
+};
+
 // Component to handle getting user's location and setting map view
 const LocationButton = () => {
   const map = useMap();
@@ -117,23 +133,45 @@ const SetViewOnUserLocation = () => {
 const MapView: React.FC = () => {
   const [showList, setShowList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredStations, setFilteredStations] = useState(dummyStations);
+  const [stations, setStations] = useState(getStations());
+  const [filteredStations, setFilteredStations] = useState(stations);
   const [mapCenter, setMapCenter] = useState<[number, number]>([39.8283, -98.5795]); // Default center of the US
   const [mapZoom, setMapZoom] = useState(4);
+
+  // Load stations on mount and when localStorage changes
+  useEffect(() => {
+    const loadedStations = getStations();
+    setStations(loadedStations);
+    setFilteredStations(loadedStations);
+  }, []);
+
+  // Listen for storage events to update stations if another tab adds a station
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const loadedStations = getStations();
+      setStations(loadedStations);
+      setFilteredStations(loadedStations);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
     // Filter stations based on search query
     if (searchQuery.trim() === '') {
-      setFilteredStations(dummyStations);
+      setFilteredStations(stations);
     } else {
-      const filtered = dummyStations.filter(station => 
+      const filtered = stations.filter(station => 
         station.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         station.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         station.type.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredStations(filtered);
     }
-  }, [searchQuery]);
+  }, [searchQuery, stations]);
 
   return (
     <div className="h-[calc(100vh-64px)] relative">

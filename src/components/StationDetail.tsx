@@ -1,52 +1,119 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2, Navigation } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 // Dummy data for demonstration
-const stationDetails = {
-  id: 1,
-  name: "Central Park Fountain",
-  address: "Central Park, New York, NY",
-  type: "Public Fountain",
-  rating: 4.5,
-  status: "Open",
-  hours: "24/7",
-  description: "A public drinking fountain located near the entrance of Central Park. Clean water available for all visitors. The fountain provides cold, filtered water.",
-  features: ["Wheelchair Accessible", "Bottle Friendly", "Filtered Water"],
-  coordinates: [40.785091, -73.968285], // Added coordinates
-  reviews: [
-    {
-      id: 1,
-      user: "Jamie S.",
-      date: "2 weeks ago",
-      rating: 5,
-      comment: "Great water pressure and the water tastes clean. Very convenient location!",
-      avatar: "https://randomuser.me/api/portraits/women/33.jpg"
-    },
-    {
-      id: 2,
-      user: "Alex M.",
-      date: "1 month ago",
-      rating: 4,
-      comment: "Water is cold and refreshing. The area around the fountain could be cleaner though.",
-      avatar: "https://randomuser.me/api/portraits/men/54.jpg"
+const dummyStations = [
+  {
+    id: 1,
+    name: "Central Park Fountain",
+    address: "Central Park, New York, NY",
+    type: "Public Fountain",
+    rating: 4.5,
+    status: "Open",
+    hours: "24/7",
+    description: "A public drinking fountain located near the entrance of Central Park. Clean water available for all visitors. The fountain provides cold, filtered water.",
+    features: ["Wheelchair Accessible", "Bottle Friendly", "Filtered Water"],
+    coordinates: [40.785091, -73.968285],
+    position: [40.785091, -73.968285],
+    reviews: [
+      {
+        id: 1,
+        user: "Jamie S.",
+        date: "2 weeks ago",
+        rating: 5,
+        comment: "Great water pressure and the water tastes clean. Very convenient location!",
+        avatar: "https://randomuser.me/api/portraits/women/33.jpg"
+      },
+      {
+        id: 2,
+        user: "Alex M.",
+        date: "1 month ago",
+        rating: 4,
+        comment: "Water is cold and refreshing. The area around the fountain could be cleaner though.",
+        avatar: "https://randomuser.me/api/portraits/men/54.jpg"
+      }
+    ],
+    images: [
+      "https://images.unsplash.com/photo-1564466809058-bf4114d55352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1616903474236-ba3578973e3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+    ]
+  },
+  
+];
+
+// Get stations from localStorage or use dummy data if not found
+const getStations = () => {
+  try {
+    const stations = localStorage.getItem('refillia-stations');
+    if (stations) {
+      // Merge dummy data with stored stations
+      const storedStations = JSON.parse(stations);
+      return [...dummyStations, ...storedStations];
     }
-  ],
-  images: [
-    "https://images.unsplash.com/photo-1564466809058-bf4114d55352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1616903474236-ba3578973e3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  ]
+    return dummyStations;
+  } catch (error) {
+    console.error('Error reading stations from localStorage:', error);
+    return dummyStations;
+  }
 };
 
 interface StationDetailProps {
   stationId: number | null;
 }
 
-const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
-  // In a real app, you would fetch the station details based on the ID
+const StationDetail: React.FC<StationDetailProps> = ({ stationId: propStationId }) => {
+  const params = useParams();
+  const navigate = useNavigate();
+  const [stationDetails, setStationDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Get ID from props or URL params
+    const id = propStationId || Number(params.id);
+    
+    if (!id) {
+      navigate('/map');
+      return;
+    }
+    
+    // Find station with matching ID
+    const stations = getStations();
+    const station = stations.find((s: any) => s.id === id);
+    
+    if (station) {
+      // Format the station data
+      const formattedStation = {
+        ...station,
+        status: station.status || "Open",
+        hours: station.hours || (station.features?.isOpen24_7 ? "24/7" : "9 AM - 5 PM"),
+        coordinates: station.coordinates || station.position,
+        features: station.features ? [
+          ...(station.features.isFiltered ? ["Filtered Water"] : []),
+          ...(station.features.isBottleFriendly ? ["Bottle Friendly"] : []),
+          ...(station.features.isAccessible ? ["Wheelchair Accessible"] : []),
+          ...(station.features.isColdWater ? ["Cold Water"] : []),
+        ] : ["Filtered Water", "Bottle Friendly"],
+        reviews: station.reviews || [],
+        images: station.images || [
+          "https://images.unsplash.com/photo-1564466809058-bf4114d55352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+        ]
+      };
+      
+      setStationDetails(formattedStation);
+    } else {
+      // If station not found, navigate back to map
+      navigate('/map');
+    }
+    
+    setLoading(false);
+  }, [propStationId, params.id, navigate]);
+  
+  if (loading || !stationDetails) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
   
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -65,7 +132,7 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
             <Star className="h-4 w-4 text-yellow-400 mr-1" fill="currentColor" />
-            <span>{stationDetails.rating} (24 reviews)</span>
+            <span>{stationDetails.rating} ({stationDetails.reviews.length || 0} reviews)</span>
           </div>
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-1" />
@@ -90,7 +157,7 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
       
       {/* Station Images */}
       <div className="grid grid-cols-2 gap-2 mb-6">
-        {stationDetails.images.map((image, index) => (
+        {stationDetails.images.map((image: string, index: number) => (
           <img 
             key={index}
             src={image} 
@@ -108,7 +175,7 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
           
           <h3 className="font-medium mb-2">Features:</h3>
           <div className="flex flex-wrap gap-2">
-            {stationDetails.features.map((feature, index) => (
+            {stationDetails.features.map((feature: string, index: number) => (
               <span 
                 key={index}
                 className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-refillia-light-blue text-refillia-primary"
@@ -141,34 +208,40 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
       <div>
         <h2 className="text-xl font-semibold mb-4">Reviews</h2>
         <div className="space-y-4">
-          {stationDetails.reviews.map(review => (
-            <div key={review.id} className="border-b pb-4">
-              <div className="flex items-start">
-                <img 
-                  src={review.avatar} 
-                  alt={review.user} 
-                  className="w-10 h-10 rounded-full mr-3 object-cover"
-                />
-                <div>
-                  <div className="flex items-center mb-1">
-                    <h4 className="font-medium text-gray-800 mr-2">{review.user}</h4>
-                    <span className="text-sm text-gray-500">{review.date}</span>
+          {stationDetails.reviews.length > 0 ? (
+            stationDetails.reviews.map((review: any) => (
+              <div key={review.id} className="border-b pb-4">
+                <div className="flex items-start">
+                  <img 
+                    src={review.avatar} 
+                    alt={review.user} 
+                    className="w-10 h-10 rounded-full mr-3 object-cover"
+                  />
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <h4 className="font-medium text-gray-800 mr-2">{review.user}</h4>
+                      <span className="text-sm text-gray-500">{review.date}</span>
+                    </div>
+                    <div className="flex items-center mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i}
+                          className="h-4 w-4 mr-1" 
+                          fill={i < review.rating ? '#FFD700' : 'none'} 
+                          stroke={i < review.rating ? '#FFD700' : 'currentColor'}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-gray-700">{review.comment}</p>
                   </div>
-                  <div className="flex items-center mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i}
-                        className="h-4 w-4 mr-1" 
-                        fill={i < review.rating ? '#FFD700' : 'none'} 
-                        stroke={i < review.rating ? '#FFD700' : 'currentColor'}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-gray-700">{review.comment}</p>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500 py-4">
+              No reviews yet. Be the first to review this station!
             </div>
-          ))}
+          )}
         </div>
         
         <Button className="w-full mt-6 bg-refillia-primary hover:bg-refillia-primary/90">

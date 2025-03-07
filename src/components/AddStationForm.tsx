@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Info, Upload, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -26,18 +25,67 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Component to set initial map center to user location
+const SetViewOnUserLocation = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          map.setView([latitude, longitude], 13);
+          console.log("Set view to user location for adding station:", latitude, longitude);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Fallback to default center if geolocation fails
+        }
+      );
+    }
+  }, [map]);
+  
+  return null;
+};
+
 // Component for selecting location on map
 const LocationSelector = ({ position, setPosition }: { position: [number, number], setPosition: React.Dispatch<React.SetStateAction<[number, number]>> }) => {
-  useMapEvents({
+  const map = useMapEvents({
     click: (e) => {
       setPosition([e.latlng.lat, e.latlng.lng]);
     },
   });
 
+  // Set user's current location when component mounts
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setPosition([latitude, longitude]);
+        },
+        (error) => {
+          console.error("Error getting location for position setting:", error);
+        }
+      );
+    }
+  }, [setPosition]);
+
   return (
     <Marker position={position}>
     </Marker>
   );
+};
+
+// Get the shared stations from localStorage or use default if not found
+const getStoredStations = () => {
+  try {
+    const stations = localStorage.getItem('refillia-stations');
+    return stations ? JSON.parse(stations) : null;
+  } catch (error) {
+    console.error('Error reading stations from localStorage:', error);
+    return null;
+  }
 };
 
 const AddStationForm: React.FC = () => {
@@ -73,13 +121,16 @@ const AddStationForm: React.FC = () => {
     
     // Create station data object to be sent to API
     const stationData = {
+      id: Date.now(), // Use timestamp as ID for now
       name,
-      address,
+      address: `${address}, ${city}, ${state}`,
       city,
       state,
       description,
       type: stationType,
       position,
+      rating: 0, // Default rating for new stations
+      distance: "0 mi", // Will be calculated later
       features: {
         isOpen24_7,
         isFiltered,
@@ -91,16 +142,35 @@ const AddStationForm: React.FC = () => {
     
     console.log('Submitting station data:', stationData);
     
-    // For the MVP, just show a success toast and redirect
-    toast({
-      title: "Station submitted successfully!",
-      description: "Thank you for contributing to Refillia. Your submission will be reviewed soon.",
-    });
-    
-    // In a real app, you would submit the form data to an API
-    setTimeout(() => {
-      navigate('/map');
-    }, 2000);
+    // Store the new station in localStorage
+    try {
+      // Get existing stations or use default
+      const existingStations = getStoredStations() || [];
+      
+      // Add the new station
+      const updatedStations = [...existingStations, stationData];
+      
+      // Save back to localStorage
+      localStorage.setItem('refillia-stations', JSON.stringify(updatedStations));
+      
+      // Show success toast
+      toast({
+        title: "Station submitted successfully!",
+        description: "Thank you for contributing to Refillia. Your submission has been added.",
+      });
+      
+      // Navigate back to map after a short delay
+      setTimeout(() => {
+        navigate('/map');
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving station:', error);
+      toast({
+        title: "Error saving station",
+        description: "There was a problem saving your station. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -127,9 +197,10 @@ const AddStationForm: React.FC = () => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   <LocationSelector position={position} setPosition={setPosition} />
+                  <SetViewOnUserLocation />
                 </MapContainer>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Click on the map to mark the refill station location.</p>
+              <p className="text-sm text-gray-500 mt-2">Click on the map to mark the refill station location. By default, your current location is selected.</p>
             </div>
             
             {/* Location Information Section */}
