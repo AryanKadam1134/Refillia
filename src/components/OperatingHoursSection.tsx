@@ -31,7 +31,7 @@ const OperatingHoursSection: React.FC<OperatingHoursProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <Label className="text-base font-semibold">Operating Hours</Label>
+      <h2 className="text-lg font-semibold">Operating Hours</h2>
       <div className="space-y-2">
         {DAYS.map((day) => (
           <div key={day} className="flex items-center space-x-4 p-2 rounded bg-gray-50">

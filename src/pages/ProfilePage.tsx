@@ -12,8 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import OperatingHoursSection from '@/components/OperatingHoursSection';
 
 interface Achievement {
   id: string;
@@ -57,9 +55,6 @@ const ProfilePage: React.FC = () => {
 
   // Add this state
   const [userStations, setUserStations] = useState<Station[]>([]);
-
-  // Add new state for editing
-  const [editingStationId, setEditingStationId] = useState<string | null>(null);
 
   // Redirect if not logged in
   if (!user) {
@@ -147,56 +142,43 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // Add new function to handle station updates
-  const handleUpdateStation = async (stationId: string, updates: Partial<Station>) => {
-    try {
-      const station = userStations.find(s => s.id === stationId);
-      if (!station) return;
-
-      const { error } = await supabase
-        .from('water_stations')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          operating_hours: updates.operating_hours,
-          features: updates.features,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', stationId)
-        .eq('user_id', user?.id); // Ensure user can only update their own stations
-
-      if (error) throw error;
-
-      toast({
-        title: "Station Updated",
-        description: "The station details have been updated successfully."
-      });
-
-      setEditingStationId(null);
-      fetchUserStations(); // Refresh the list
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleUpdateProfile = async () => {
     if (!user) return;
+
+    // Add validation for username
+    if (!username.trim()) {
+      toast({
+        title: "Invalid username",
+        description: "Username cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ username })
+        .update({ 
+          username,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id);
 
       if (error) throw error;
 
+      // Update the local userProfile state through AuthContext
+      if (userProfile) {
+        const updatedProfile = {
+          ...userProfile,
+          username
+        };
+        // You'll need to add setUserProfile to your useAuth hook
+        // setUserProfile(updatedProfile);
+      }
+
       toast({
         title: "Profile updated",
-        description: "Your profile has been successfully updated.",
+        description: "Your username has been successfully updated.",
       });
       
       setIsEditing(false);
@@ -242,28 +224,38 @@ const ProfilePage: React.FC = () => {
               <Avatar className="w-24 h-24 mx-auto mb-4">
                 <AvatarImage src={userProfile?.avatar_url || ''} alt={userProfile?.username || 'User'} />
                 <AvatarFallback className="bg-refillia-primary text-white text-xl">
-                  {getInitials(userProfile?.username || user.email || 'U')}
+                  {getInitials(userProfile?.username || 'U')}
                 </AvatarFallback>
               </Avatar>
-              
-              {isEditing ? (
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                </div>
-              ) : (
-                <CardTitle>{userProfile?.username || user.email}</CardTitle>
-              )}
-              
-              <CardDescription className="mt-2">
+
+              {/* Username section - editable */}
+              <div className="mb-4">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      placeholder="Enter username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="text-center"
+                    />
+                  </div>
+                ) : (
+                  <CardTitle>{userProfile?.username || 'Set username'}</CardTitle>
+                )}
+              </div>
+
+              {/* Email section */}
+              <div className="text-sm text-gray-500">
+                <span className="font-medium text-gray-700">{user.email}</span>
+              </div>
+
+              <CardDescription className="mt-4">
                 Member since {new Date(userProfile?.created_at || '').toLocaleDateString()}
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent>
               {userProfile && (
                 <div className="mt-2">
@@ -306,12 +298,15 @@ const ProfilePage: React.FC = () => {
                     className="flex-1 bg-refillia-primary hover:bg-refillia-primary/90"
                     onClick={handleUpdateProfile}
                   >
-                    Save
+                    Save Changes
                   </Button>
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setUsername(userProfile?.username || '');
+                      setIsEditing(false);
+                    }}
                   >
                     Cancel
                   </Button>
@@ -324,7 +319,7 @@ const ProfilePage: React.FC = () => {
                     onClick={() => setIsEditing(true)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    Edit Profile
                   </Button>
                   <Button 
                     variant="outline" 
@@ -356,106 +351,26 @@ const ProfilePage: React.FC = () => {
                       <div key={station.id} className="flex flex-col p-3 border-b">
                         <div className="flex justify-between items-start">
                           <div className="w-full">
-                            {editingStationId === station.id ? (
-                              <div className="space-y-4">
-                                <div>
-                                  <Label>Station Name</Label>
-                                  <Input
-                                    value={station.name}
-                                    onChange={(e) => {
-                                      const updatedStations = userStations.map(s =>
-                                        s.id === station.id ? { ...s, name: e.target.value } : s
-                                      );
-                                      setUserStations(updatedStations);
-                                    }}
-                                    className="mb-2"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <Label>Description</Label>
-                                  <Textarea
-                                    value={station.description}
-                                    onChange={(e) => {
-                                      const updatedStations = userStations.map(s =>
-                                        s.id === station.id ? { ...s, description: e.target.value } : s
-                                      );
-                                      setUserStations(updatedStations);
-                                    }}
-                                    className="mb-2"
-                                  />
-                                </div>
-                            
-                                {station.is_private && (
-                                  <div>
-                                    <Label>Operating Hours</Label>
-                                    <OperatingHoursSection
-                                      schedule={station.operating_hours || {}}
-                                      onScheduleChange={(day, updates) => {
-                                        const updatedStations = userStations.map(s =>
-                                          s.id === station.id ? {
-                                            ...s,
-                                            operating_hours: {
-                                              ...s.operating_hours,
-                                              [day]: { ...s.operating_hours?.[day], ...updates }
-                                            }
-                                          } : s
-                                        );
-                                        setUserStations(updatedStations);
-                                      }}
-                                    />
-                                  </div>
-                                )}
-                            
-                                <div className="flex gap-2 mt-4">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleUpdateStation(station.id, station)}
-                                  >
-                                    Save Changes
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingStationId(null)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <Link 
-                                  to={`/station/${station.id}`} 
-                                  className="font-medium hover:text-refillia-primary"
-                                >
-                                  {station.name}
-                                </Link>
-                                <p className="text-sm text-gray-500">{station.address}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant={station.is_private ? 'outline' : 'default'}>
-                                    {station.is_private ? 'Private' : 'Public'}
-                                  </Badge>
-                                  <Badge variant={
-                                    station.verification_status === 'approved' ? 'success' :
-                                    station.verification_status === 'rejected' ? 'destructive' :
-                                    'default'
-                                  }>
-                                    {station.verification_status.charAt(0).toUpperCase() + 
-                                     station.verification_status.slice(1)}
-                                  </Badge>
-                                  {station.is_private && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setEditingStationId(station.id)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </>
-                            )}
+                            <Link 
+                              to={`/station/${station.id}`} 
+                              className="font-medium hover:text-refillia-primary"
+                            >
+                              {station.name}
+                            </Link>
+                            <p className="text-sm text-gray-500">{station.address}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={station.is_private ? 'outline' : 'default'}>
+                                {station.is_private ? 'Private' : 'Public'}
+                              </Badge>
+                              <Badge variant={
+                                station.verification_status === 'approved' ? 'success' :
+                                station.verification_status === 'rejected' ? 'destructive' :
+                                'default'
+                              }>
+                                {station.verification_status.charAt(0).toUpperCase() + 
+                                 station.verification_status.slice(1)}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </div>
