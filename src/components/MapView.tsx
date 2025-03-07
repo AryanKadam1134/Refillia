@@ -21,7 +21,28 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Add this near the top of the file
+// Add this after the DefaultIcon definition
+
+// Public station icon (blue)
+const PublicIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Private station icon (dark blue)
+const PrivateIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 interface Station {
   id: string;
   name: string;
@@ -33,6 +54,7 @@ interface Station {
   verification_status: string;
   distance?: string;
   position?: [number, number];
+  is_private: boolean;  // Add this line
 }
 
 // Get stations from Supabase
@@ -175,12 +197,15 @@ const MapView: React.FC = () => {
           <Marker 
             key={station.id} 
             position={[station.latitude, station.longitude] as [number, number]}
+            icon={station.is_private ? PrivateIcon : PublicIcon}
           >
             <Popup>
               <div className="p-1">
                 <h3 className="font-semibold">{station.name}</h3>
                 <p className="text-sm">{station.address}</p>
-                <p className="text-xs text-gray-600">{station.access_type}</p>
+                <p className="text-xs text-gray-600">
+                  {station.is_private ? 'Private' : 'Public'} {station.access_type}
+                </p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span>Rating: {station.rating || 0} ★</span>
                   <Link 
