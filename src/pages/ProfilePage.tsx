@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import OperatingHoursSection from '@/components/OperatingHoursSection';
 
 interface Achievement {
   id: string;
@@ -25,14 +27,23 @@ interface Achievement {
   unlocked_at?: string;
 }
 
-// Add this interface
+// Add this inside the Station interface
 interface Station {
   id: string;
   name: string;
   address: string;
+  description: string;
   verification_status: string;
   is_private: boolean;
   created_at: string;
+  user_id: string;
+  operating_hours?: Record<string, { isOpen: boolean; openTime: string; closeTime: string; }>;
+  features?: {
+    isFiltered: boolean;
+    isBottleFriendly: boolean;
+    isAccessible: boolean;
+    isColdWater: boolean;
+  };
 }
 
 const ProfilePage: React.FC = () => {
@@ -46,6 +57,9 @@ const ProfilePage: React.FC = () => {
 
   // Add this state
   const [userStations, setUserStations] = useState<Station[]>([]);
+
+  // Add new state for editing
+  const [editingStationId, setEditingStationId] = useState<string | null>(null);
 
   // Redirect if not logged in
   if (!user) {
@@ -130,6 +144,42 @@ const ProfilePage: React.FC = () => {
       setUserStations(data || []);
     } catch (error) {
       console.error('Error fetching user stations:', error);
+    }
+  };
+
+  // Add new function to handle station updates
+  const handleUpdateStation = async (stationId: string, updates: Partial<Station>) => {
+    try {
+      const station = userStations.find(s => s.id === stationId);
+      if (!station) return;
+
+      const { error } = await supabase
+        .from('water_stations')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          operating_hours: updates.operating_hours,
+          features: updates.features,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', stationId)
+        .eq('user_id', user?.id); // Ensure user can only update their own stations
+
+      if (error) throw error;
+
+      toast({
+        title: "Station Updated",
+        description: "The station details have been updated successfully."
+      });
+
+      setEditingStationId(null);
+      fetchUserStations(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -303,29 +353,111 @@ const ProfilePage: React.FC = () => {
                 {userStations.length > 0 ? (
                   <div className="space-y-4">
                     {userStations.map((station) => (
-                      <div key={station.id} className="flex justify-between items-center p-3 border-b">
-                        <div>
-                          <Link to={`/station/${station.id}`} className="font-medium hover:text-refillia-primary">
-                            {station.name}
-                          </Link>
-                          <p className="text-sm text-gray-500">{station.address}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant={station.is_private ? 'outline' : 'default'}>
-                              {station.is_private ? 'Private' : 'Public'}
-                            </Badge>
-                            <Badge variant={
-                              station.verification_status === 'approved' ? 'success' :
-                              station.verification_status === 'rejected' ? 'destructive' :
-                              'default'
-                            }>
-                              {station.verification_status.charAt(0).toUpperCase() + 
-                               station.verification_status.slice(1)}
-                            </Badge>
+                      <div key={station.id} className="flex flex-col p-3 border-b">
+                        <div className="flex justify-between items-start">
+                          <div className="w-full">
+                            {editingStationId === station.id ? (
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>Station Name</Label>
+                                  <Input
+                                    value={station.name}
+                                    onChange={(e) => {
+                                      const updatedStations = userStations.map(s =>
+                                        s.id === station.id ? { ...s, name: e.target.value } : s
+                                      );
+                                      setUserStations(updatedStations);
+                                    }}
+                                    className="mb-2"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <Label>Description</Label>
+                                  <Textarea
+                                    value={station.description}
+                                    onChange={(e) => {
+                                      const updatedStations = userStations.map(s =>
+                                        s.id === station.id ? { ...s, description: e.target.value } : s
+                                      );
+                                      setUserStations(updatedStations);
+                                    }}
+                                    className="mb-2"
+                                  />
+                                </div>
+                            
+                                {station.is_private && (
+                                  <div>
+                                    <Label>Operating Hours</Label>
+                                    <OperatingHoursSection
+                                      schedule={station.operating_hours || {}}
+                                      onScheduleChange={(day, updates) => {
+                                        const updatedStations = userStations.map(s =>
+                                          s.id === station.id ? {
+                                            ...s,
+                                            operating_hours: {
+                                              ...s.operating_hours,
+                                              [day]: { ...s.operating_hours?.[day], ...updates }
+                                            }
+                                          } : s
+                                        );
+                                        setUserStations(updatedStations);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                            
+                                <div className="flex gap-2 mt-4">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdateStation(station.id, station)}
+                                  >
+                                    Save Changes
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingStationId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <Link 
+                                  to={`/station/${station.id}`} 
+                                  className="font-medium hover:text-refillia-primary"
+                                >
+                                  {station.name}
+                                </Link>
+                                <p className="text-sm text-gray-500">{station.address}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant={station.is_private ? 'outline' : 'default'}>
+                                    {station.is_private ? 'Private' : 'Public'}
+                                  </Badge>
+                                  <Badge variant={
+                                    station.verification_status === 'approved' ? 'success' :
+                                    station.verification_status === 'rejected' ? 'destructive' :
+                                    'default'
+                                  }>
+                                    {station.verification_status.charAt(0).toUpperCase() + 
+                                     station.verification_status.slice(1)}
+                                  </Badge>
+                                  {station.is_private && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setEditingStationId(station.id)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          {new Date(station.created_at).toLocaleDateString()}
-                        </span>
                       </div>
                     ))}
                   </div>

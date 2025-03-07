@@ -39,15 +39,15 @@ const OperatingHoursSection: React.FC<OperatingHoursProps> = ({
               <Label>{day}</Label>
             </div>
             <Switch
-              checked={schedule[day].isOpen}
+              checked={schedule[day]?.isOpen ?? false}
               onCheckedChange={(checked) => 
                 onScheduleChange(day, { isOpen: checked })
               }
             />
-            {schedule[day].isOpen && (
+            {schedule[day]?.isOpen && (
               <>
                 <Select
-                  value={schedule[day].openTime}
+                  value={schedule[day]?.openTime}
                   onValueChange={(value) => 
                     onScheduleChange(day, { openTime: value })
                   }
@@ -65,7 +65,7 @@ const OperatingHoursSection: React.FC<OperatingHoursProps> = ({
                 </Select>
                 <span>to</span>
                 <Select
-                  value={schedule[day].closeTime}
+                  value={schedule[day]?.closeTime}
                   onValueChange={(value) => 
                     onScheduleChange(day, { closeTime: value })
                   }

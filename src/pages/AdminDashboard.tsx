@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw, Edit } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Station {
   id: string;
@@ -39,6 +40,7 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
+  const [editingStationId, setEditingStationId] = useState<string | null>(null);
 
   const fetchPendingStations = async () => {
     try {
@@ -146,6 +148,40 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdate = async (stationId: string) => {
+    try {
+      const station = stations.find(s => s.id === stationId);
+      if (!station) return;
+
+      const { error } = await supabase
+        .from('water_stations')
+        .update({
+          name: station.name,
+          description: station.description,
+          admin_notes: station.admin_notes,
+          updated_at: new Date().toISOString(),
+          updated_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', stationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Station Updated",
+        description: "The station details have been updated successfully."
+      });
+      
+      setEditingStationId(null);
+      fetchPendingStations();
+    } catch (error: any) {
+      toast({
+        title: "Error updating station",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -196,7 +232,58 @@ const AdminDashboard = () => {
         <TableBody>
           {stations.map((station) => (
             <TableRow key={station.id}>
-              <TableCell>{station.name}</TableCell>
+              <TableCell>
+                {editingStationId === station.id ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={station.name}
+                      onChange={(e) => {
+                        const updatedStations = stations.map(s =>
+                          s.id === station.id ? { ...s, name: e.target.value } : s
+                        );
+                        setStations(updatedStations);
+                      }}
+                      className="mb-2"
+                    />
+                    <Textarea
+                      value={station.description}
+                      onChange={(e) => {
+                        const updatedStations = stations.map(s =>
+                          s.id === station.id ? { ...s, description: e.target.value } : s
+                        );
+                        setStations(updatedStations);
+                      }}
+                      className="mb-2"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleUpdate(station.id)}>
+                        Save Changes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingStationId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {!station.is_private && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingStationId(station.id)}
+                        className="mb-2"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Details
+                      </Button>
+                    )}
+                  </>
+                )}
+              </TableCell>
               <TableCell>{station.address}</TableCell>
               <TableCell className="max-w-[300px]">
                 <div className="line-clamp-3">{station.description}</div>
