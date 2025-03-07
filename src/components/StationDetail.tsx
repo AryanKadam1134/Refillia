@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useParams } from 'react-router-dom';
 import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -41,8 +40,11 @@ const stationDetails = {
   ]
 };
 
-const StationDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+interface StationDetailProps {
+  stationId: number | null;
+}
+
+const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
   // In a real app, you would fetch the station details based on the ID
   
   return (
