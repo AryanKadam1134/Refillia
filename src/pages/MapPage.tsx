@@ -6,7 +6,9 @@ import MapView from '@/components/MapView';
 const MapPage = () => {
   return (
     <Layout>
-      <MapView />
+      <div className="h-full">
+        <MapView />
+      </div>
     </Layout>
   );
 };
