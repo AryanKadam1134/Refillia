@@ -35,46 +35,6 @@ interface Station {
   position?: [number, number];
 }
 
-// Dummy data for stations
-const dummyStations = [
-  {
-    id: 1,
-    name: "Central Park Fountain",
-    address: "Central Park, New York, NY",
-    type: "Public Fountain",
-    rating: 4.5,
-    distance: "0.3 mi",
-    position: [40.785091, -73.968285] // New York
-  },
-  {
-    id: 2,
-    name: "City Library Refill Station",
-    address: "Main St & 5th Ave, Seattle, WA",
-    type: "Indoor Station",
-    rating: 4.8,
-    distance: "0.7 mi",
-    position: [47.606209, -122.332071] // Seattle
-  },
-  {
-    id: 3,
-    name: "Green Cafe",
-    address: "123 Market St, San Francisco, CA",
-    type: "Cafe",
-    rating: 4.2,
-    distance: "1.2 mi",
-    position: [37.774929, -122.419416] // San Francisco
-  },
-  {
-    id: 4,
-    name: "Community Center",
-    address: "500 Community Dr, Portland, OR",
-    type: "Indoor Station",
-    rating: 4.0,
-    distance: "1.5 mi",
-    position: [45.523064, -122.676483] // Portland
-  }
-];
-
 // Get stations from Supabase
 const getStations = async () => {
   const { data, error } = await supabase

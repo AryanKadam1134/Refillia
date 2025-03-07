@@ -14,6 +14,8 @@ import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import GamificationService, { ActivityType } from '@/services/GamificationService';
+import StationTypeDialog from './StationTypeDialog';
+import OperatingHoursSection from './OperatingHoursSection';
 
 // Fix for default marker icons in Leaflet with React
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -91,14 +93,20 @@ const AddStationForm: React.FC = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [description, setDescription] = useState('');
-  const [stationType, setStationType] = useState('');
-  const [isOpen24_7, setIsOpen24_7] = useState(false);
   const [isFiltered, setIsFiltered] = useState(false);
   const [isBottleFriendly, setIsBottleFriendly] = useState(false);
   const [isAccessible, setIsAccessible] = useState(false);
   const [isColdWater, setIsColdWater] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTypeDialog, setShowTypeDialog] = useState(true);
+  const [stationType, setStationType] = useState<'public' | 'private' | 'Public Fountain' | 'Bottle Filling Station' | 'Water Fountain' | 'Other' | ''>('');
+  const [operatingHours, setOperatingHours] = useState<Record<string, { isOpen: boolean; openTime: string; closeTime: string; }>>(
+    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].reduce((acc, day) => ({
+      ...acc,
+      [day]: { isOpen: false, openTime: '09:00', closeTime: '17:00' }
+    }), {})
+  );
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -112,6 +120,11 @@ const AddStationForm: React.FC = () => {
     }
   }, [user, navigate, toast]);
   
+  const handleStationTypeSelect = (type: 'public' | 'private') => {
+    setStationType(type);
+    setShowTypeDialog(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -138,7 +151,6 @@ const AddStationForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Prepare station data - Remove features object and add relevant fields directly
       const stationData = {
         name,
         description,
@@ -148,14 +160,28 @@ const AddStationForm: React.FC = () => {
         longitude: position[1],
         access_type: stationType,
         water_quality: isFiltered ? 'Filtered' : 'Standard',
-        // Store features in description instead
         description: `${description}\n\nFeatures:\n${[
-          isOpen24_7 ? '- Open 24/7' : '',
           isFiltered ? '- Filtered water' : '',
           isBottleFriendly ? '- Bottle friendly' : '',
           isAccessible ? '- Wheelchair accessible' : '',
           isColdWater ? '- Cold water' : ''
-        ].filter(Boolean).join('\n')}`
+        ].filter(Boolean).join('\n')}`,
+        is_private: stationType === 'private',
+        // Add operating hours for private stations
+        operating_hours: stationType === 'private' ? 
+          Object.entries(operatingHours).reduce((acc, [day, schedule]) => ({
+            ...acc,
+            [day]: schedule.isOpen ? {
+              isOpen: true,
+              openTime: schedule.openTime,
+              closeTime: schedule.closeTime
+            } : {
+              isOpen: false,
+              openTime: null,
+              closeTime: null
+            }
+          }), {}) : null,
+        verification_status: 'pending'
       };
       
       // Insert into Supabase
@@ -189,7 +215,6 @@ const AddStationForm: React.FC = () => {
           position,
           description,
           features: {
-            isOpen24_7,
             isFiltered,
             isBottleFriendly,
             isAccessible,
@@ -223,6 +248,16 @@ const AddStationForm: React.FC = () => {
     }
   };
   
+  if (showTypeDialog) {
+    return (
+      <StationTypeDialog
+        open={showTypeDialog}
+        onClose={() => navigate('/map')}
+        onSelectType={handleStationTypeSelect}
+      />
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Add a Refill Station</h1>
@@ -306,6 +341,7 @@ const AddStationForm: React.FC = () => {
                   </div>
                 </div>
                 
+                {/* Update the station type select element */}
                 <div>
                   <Label htmlFor="stationType">Station Type</Label>
                   <select 
@@ -313,14 +349,19 @@ const AddStationForm: React.FC = () => {
                     className="w-full rounded-md border border-gray-300 p-2"
                     required
                     value={stationType}
-                    onChange={(e) => setStationType(e.target.value)}
+                    onChange={(e) => setStationType(e.target.value as typeof stationType)}
                   >
                     <option value="">Select station type</option>
-                    <option value="Public Fountain">Public Fountain</option>
-                    <option value="Bottle Filling Station">Bottle Filling Station</option>
-                    <option value="Water Fountain">Water Fountain</option>
-                    <option value="Cafe/Restaurant">Cafe/Restaurant</option>
-                    <option value="Other">Other</option>
+                    {stationType === 'private' ? (
+                      <option value="private">Private Station</option>
+                    ) : (
+                      <>
+                        <option value="Public Fountain">Public Fountain</option>
+                        <option value="Bottle Filling Station">Bottle Filling Station</option>
+                        <option value="Water Fountain">Water Fountain</option>
+                        <option value="Other">Other</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -346,20 +387,19 @@ const AddStationForm: React.FC = () => {
                   />
                 </div>
                 
-                <div>
-                  <Label className="mb-2 block">Operating Hours</Label>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="allDay" 
-                      checked={isOpen24_7}
-                      onCheckedChange={(checked) => setIsOpen24_7(checked as boolean)}
-                    />
-                    <label htmlFor="allDay" className="text-sm text-gray-700 cursor-pointer">
-                      Open 24/7
-                    </label>
-                  </div>
-                </div>
-                
+                {/* Add Operating Hours section for private stations */}
+                {stationType === 'private' && (
+                  <OperatingHoursSection
+                    schedule={operatingHours}
+                    onScheduleChange={(day, updates) => {
+                      setOperatingHours(prev => ({
+                        ...prev,
+                        [day]: { ...prev[day], ...updates }
+                      }));
+                    }}
+                  />
+                )}
+
                 <div>
                   <Label className="mb-2 block">Features</Label>
                   <div className="grid grid-cols-2 gap-2">
