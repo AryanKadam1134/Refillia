@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +27,8 @@ export interface UserProfile {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const ADMIN_EMAIL = 'admin@refillia.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -104,16 +105,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password,
       });
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      // Check if the user is admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       }
 
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
-      
-      navigate('/');
     } catch (error: any) {
       toast({
         title: "Error signing in",
@@ -184,6 +197,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add createAdminUser function
+  const createAdminUser = async () => {
+    const adminEmail = ADMIN_EMAIL;
+    const adminPassword = 'Admin@123'; // Use a strong password
+
+    try {
+      // Create the admin user
+      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+        email: adminEmail,
+        password: adminPassword,
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (user) {
+        // Set the user's role to admin
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('id', user.id);
+
+        if (updateError) throw updateError;
+
+        console.log('Admin user created successfully');
+        return { adminEmail, adminPassword };
+      }
+    } catch (error: any) {
+      console.error('Error creating admin:', error);
+      throw error;
     }
   };
 

@@ -203,8 +203,8 @@ const AddStationForm: React.FC = () => {
       }
       
       toast({
-        title: "Station added successfully!",
-        description: "Thank you for contributing to Refillia. Your submission has been added and you've earned points!",
+        title: "Station submitted successfully!",
+        description: "Thank you for contributing to Refillia. Your submission is pending admin approval and you've earned points!",
       });
       
       // Navigate to the map after a short delay

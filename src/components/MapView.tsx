@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Filter, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { supabase } from '@/integrations/supabase/client'; // Import supabase client
 
 // Fix for default marker icons in Leaflet with React
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -20,6 +20,20 @@ let DefaultIcon = L.icon({
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Add this near the top of the file
+interface Station {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  access_type: string;
+  rating?: number;
+  verification_status: string;
+  distance?: string;
+  position?: [number, number];
+}
 
 // Dummy data for stations
 const dummyStations = [
@@ -61,20 +75,27 @@ const dummyStations = [
   }
 ];
 
-// Get stations from localStorage or use dummy data if not found
-const getStations = () => {
-  try {
-    const stations = localStorage.getItem('refillia-stations');
-    if (stations) {
-      // Merge dummy data with stored stations
-      const storedStations = JSON.parse(stations);
-      return [...dummyStations, ...storedStations];
-    }
-    return dummyStations;
-  } catch (error) {
-    console.error('Error reading stations from localStorage:', error);
-    return dummyStations;
+// Get stations from Supabase
+const getStations = async () => {
+  const { data, error } = await supabase
+    .from('water_stations')
+    .select('*')
+    .eq('verification_status', 'approved');
+    
+  if (error) {
+    console.error('Error fetching stations:', error);
+    return [];
   }
+  
+  // Transform the data to include position array
+  return data?.map(station => ({
+    ...station,
+    position: [station.latitude, station.longitude] as [number, number],
+    // Add default values for optional fields
+    rating: station.rating || 0,
+    distance: "calculating...",
+    type: station.access_type || "Public Fountain"
+  })) || [];
 };
 
 // Component to handle getting user's location and setting map view
@@ -133,22 +154,25 @@ const SetViewOnUserLocation = () => {
 const MapView: React.FC = () => {
   const [showList, setShowList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [stations, setStations] = useState(getStations());
-  const [filteredStations, setFilteredStations] = useState(stations);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [filteredStations, setFilteredStations] = useState<Station[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([39.8283, -98.5795]); // Default center of the US
   const [mapZoom, setMapZoom] = useState(4);
 
   // Load stations on mount and when localStorage changes
   useEffect(() => {
-    const loadedStations = getStations();
-    setStations(loadedStations);
-    setFilteredStations(loadedStations);
+    const loadStations = async () => {
+      const loadedStations = await getStations();
+      setStations(loadedStations);
+      setFilteredStations(loadedStations);
+    };
+    loadStations();
   }, []);
 
   // Listen for storage events to update stations if another tab adds a station
   useEffect(() => {
-    const handleStorageChange = () => {
-      const loadedStations = getStations();
+    const handleStorageChange = async () => {
+      const loadedStations = await getStations();
       setStations(loadedStations);
       setFilteredStations(loadedStations);
     };
@@ -190,15 +214,15 @@ const MapView: React.FC = () => {
         {filteredStations.map(station => (
           <Marker 
             key={station.id} 
-            position={station.position as [number, number]}
+            position={[station.latitude, station.longitude] as [number, number]}
           >
             <Popup>
               <div className="p-1">
                 <h3 className="font-semibold">{station.name}</h3>
                 <p className="text-sm">{station.address}</p>
-                <p className="text-xs text-gray-600">{station.type}</p>
+                <p className="text-xs text-gray-600">{station.access_type}</p>
                 <div className="flex justify-between mt-2 text-sm">
-                  <span>Rating: {station.rating} ★</span>
+                  <span>Rating: {station.rating || 0} ★</span>
                   <Link 
                     to={`/station/${station.id}`} 
                     className="text-refillia-primary hover:underline"
@@ -208,7 +232,7 @@ const MapView: React.FC = () => {
                 </div>
                 <div className="mt-2">
                   <a 
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.position[0]},${station.position[1]}`}
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.latitude},${station.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-refillia-primary hover:underline text-sm flex items-center"
@@ -274,19 +298,18 @@ const MapView: React.FC = () => {
                       <div>
                         <h4 className="font-medium text-gray-800">{station.name}</h4>
                         <p className="text-sm text-gray-500">{station.address}</p>
-                        <p className="text-xs text-gray-400 mt-1">{station.type}</p>
+                        <p className="text-xs text-gray-400 mt-1">{station.access_type}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-medium text-refillia-primary">{station.distance}</span>
                         <div className="flex items-center mt-1">
-                          <span className="text-xs text-gray-600 mr-1">{station.rating}</span>
+                          <span className="text-xs text-gray-600 mr-1">{station.rating || 0}</span>
                           <span className="text-yellow-400">★</span>
                         </div>
                       </div>
                     </div>
                     <div className="mt-2">
                       <a 
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.position[0]},${station.position[1]}`}
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.latitude},${station.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-refillia-primary hover:underline text-sm flex items-center"
