@@ -53,11 +53,11 @@ const AdminDashboard = () => {
             role
           )
         `)
+        // Remove any filters to show all stations
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Transform the data to match your Station interface
       const transformedData = data?.map(station => ({
         ...station,
         profiles: station.creator || { username: 'Unknown' }

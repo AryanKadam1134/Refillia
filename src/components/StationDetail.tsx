@@ -4,6 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext'; // Fixed import path
 
 interface Station {
   id: string;
@@ -31,6 +32,7 @@ const StationDetail: React.FC = () => {
   const navigate = useNavigate();
   const [station, setStation] = useState<Station | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth(); // Optional: keep this for interaction features
 
   useEffect(() => {
     const fetchStationDetails = async () => {
@@ -174,21 +176,33 @@ const StationDetail: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between mb-8">
-        <Button variant="outline" size="sm" className="flex items-center">
-          <ThumbsUp className="h-4 w-4 mr-1" />
-          Helpful
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center">
-          <ThumbsDown className="h-4 w-4 mr-1" />
-          Report Issue
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center">
-          <Share2 className="h-4 w-4 mr-1" />
-          Share
-        </Button>
-      </div>
+      {/* Action Buttons - Only show if user is logged in */}
+      {user && (
+        <div className="flex items-center justify-between mb-8">
+          <Button variant="outline" size="sm" className="flex items-center">
+            <ThumbsUp className="h-4 w-4 mr-1" />
+            Helpful
+          </Button>
+          <Button variant="outline" size="sm" className="flex items-center">
+            <ThumbsDown className="h-4 w-4 mr-1" />
+            Report Issue
+          </Button>
+          <Button variant="outline" size="sm" className="flex items-center">
+            <Share2 className="h-4 w-4 mr-1" />
+            Share
+          </Button>
+        </div>
+      )}
+
+      {/* Show login prompt if user is not authenticated */}
+      {!user && (
+        <div className="text-center py-4 bg-gray-50 rounded-lg mb-8">
+          <p className="text-gray-600 mb-2">Sign in to rate and review this station</p>
+          <Link to="/auth" className="text-refillia-primary hover:underline">
+            Log in or Sign up
+          </Link>
+        </div>
+      )}
     </div>
   );
 };

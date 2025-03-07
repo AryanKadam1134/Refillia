@@ -59,25 +59,28 @@ interface Station {
 
 // Get stations from Supabase
 const getStations = async () => {
-  const { data, error } = await supabase
-    .from('water_stations')
-    .select('*')
-    .eq('verification_status', 'approved');
+  try {
+    const { data, error } = await supabase
+      .from('water_stations')
+      .select('*')
+      .eq('verification_status', 'approved');
+      
+    if (error) {
+      console.error('Error fetching stations:', error);
+      return [];
+    }
     
-  if (error) {
-    console.error('Error fetching stations:', error);
+    return data?.map(station => ({
+      ...station,
+      position: [station.latitude, station.longitude] as [number, number],
+      rating: station.rating || 0,
+      distance: "calculating...",
+      type: station.access_type || "Public Fountain"
+    })) || [];
+  } catch (error) {
+    console.error('Error:', error);
     return [];
   }
-  
-  // Transform the data to include position array
-  return data?.map(station => ({
-    ...station,
-    position: [station.latitude, station.longitude] as [number, number],
-    // Add default values for optional fields
-    rating: station.rating || 0,
-    distance: "calculating...",
-    type: station.access_type || "Public Fountain"
-  })) || [];
 };
 
 // Component to handle getting user's location and setting map view

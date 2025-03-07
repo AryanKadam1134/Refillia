@@ -1,16 +1,12 @@
-
 import React from 'react';
-import { useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StationDetail from '@/components/StationDetail';
 
 const StationDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
-  const stationId = id ? parseInt(id, 10) : null;
-  
+  // Remove the ProtectedRoute wrapper
   return (
     <Layout>
-      <StationDetail stationId={stationId} />
+      <StationDetail />
     </Layout>
   );
 };

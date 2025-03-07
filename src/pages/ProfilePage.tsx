@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { Award, BadgeCheck, Droplet, Edit, LogOut, MapPin, Star, Trophy } from '
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from "@/components/ui/badge";
 
 interface Achievement {
   id: string;
@@ -25,6 +25,16 @@ interface Achievement {
   unlocked_at?: string;
 }
 
+// Add this interface
+interface Station {
+  id: string;
+  name: string;
+  address: string;
+  verification_status: string;
+  is_private: boolean;
+  created_at: string;
+}
+
 const ProfilePage: React.FC = () => {
   const { user, userProfile, signOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -32,6 +42,10 @@ const ProfilePage: React.FC = () => {
   const [userAchievements, setUserAchievements] = useState<Achievement[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Add this state
+  const [userStations, setUserStations] = useState<Station[]>([]);
 
   // Redirect if not logged in
   if (!user) {
@@ -43,6 +57,7 @@ const ProfilePage: React.FC = () => {
       setUsername(userProfile.username || '');
       fetchUserAchievements();
       fetchRecentActivities();
+      fetchUserStations(); // Add this line
     }
   }, [userProfile]);
 
@@ -97,6 +112,24 @@ const ProfilePage: React.FC = () => {
       setRecentActivities(data || []);
     } catch (error) {
       console.error('Error fetching activities:', error);
+    }
+  };
+
+  // Add this function to fetch user's stations
+  const fetchUserStations = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('water_stations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUserStations(data || []);
+    } catch (error) {
+      console.error('Error fetching user stations:', error);
     }
   };
 
@@ -258,6 +291,59 @@ const ProfilePage: React.FC = () => {
 
           {/* Achievements and Activities */}
           <div className="md:col-span-2 space-y-6">
+            {/* Add this section to the JSX before the Achievements card */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="h-5 w-5 text-refillia-primary mr-2" />
+                  Your Refill Stations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {userStations.length > 0 ? (
+                  <div className="space-y-4">
+                    {userStations.map((station) => (
+                      <div key={station.id} className="flex justify-between items-center p-3 border-b">
+                        <div>
+                          <Link to={`/station/${station.id}`} className="font-medium hover:text-refillia-primary">
+                            {station.name}
+                          </Link>
+                          <p className="text-sm text-gray-500">{station.address}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={station.is_private ? 'outline' : 'default'}>
+                              {station.is_private ? 'Private' : 'Public'}
+                            </Badge>
+                            <Badge variant={
+                              station.verification_status === 'approved' ? 'success' :
+                              station.verification_status === 'rejected' ? 'destructive' :
+                              'default'
+                            }>
+                              {station.verification_status.charAt(0).toUpperCase() + 
+                               station.verification_status.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(station.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <p>You haven't added any refill stations yet.</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-2"
+                      onClick={() => navigate('/add-station')}
+                    >
+                      Add Your First Station
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Achievements */}
             <Card>
               <CardHeader>
@@ -317,39 +403,6 @@ const ProfilePage: React.FC = () => {
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activities */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Droplet className="h-5 w-5 text-refillia-primary mr-2" />
-                  Recent Activities
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent>
-                {recentActivities.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentActivities.map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between p-3 border-b">
-                        <div>
-                          <p className="font-medium">{activity.description}</p>
-                          <p className="text-sm text-gray-500">
-                            {new Date(activity.created_at).toLocaleDateString()} • {activity.activity_type}
-                          </p>
-                        </div>
-                        <span className="text-refillia-primary font-semibold">+{activity.points} pts</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <p>You don't have any activities yet.</p>
-                    <p className="text-sm mt-1">Start adding stations and interacting with the app!</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
