@@ -9,13 +9,216 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          achievement_type: string
+          description: string
+          icon_name: string
+          id: string
+          name: string
+          points_reward: number
+          required_value: number
+        }
+        Insert: {
+          achievement_type: string
+          description: string
+          icon_name: string
+          id?: string
+          name: string
+          points_reward: number
+          required_value: number
+        }
+        Update: {
+          achievement_type?: string
+          description?: string
+          icon_name?: string
+          id?: string
+          name?: string
+          points_reward?: number
+          required_value?: number
+        }
+        Relationships: []
+      }
+      activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          points: number
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points: number
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          level: number
+          refills_logged: number
+          reviews_added: number
+          stations_added: number
+          total_points: number
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          level?: number
+          refills_logged?: number
+          reviews_added?: number
+          stations_added?: number
+          total_points?: number
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          level?: number
+          refills_logged?: number
+          reviews_added?: number
+          stations_added?: number
+          total_points?: number
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      water_stations: {
+        Row: {
+          access_type: string | null
+          address: string
+          created_at: string
+          description: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          photo_url: string | null
+          rating: number | null
+          reviews_count: number | null
+          user_id: string | null
+          water_quality: string | null
+        }
+        Insert: {
+          access_type?: string | null
+          address: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          photo_url?: string | null
+          rating?: number | null
+          reviews_count?: number | null
+          user_id?: string | null
+          water_quality?: string | null
+        }
+        Update: {
+          access_type?: string | null
+          address?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          photo_url?: string | null
+          rating?: number | null
+          reviews_count?: number | null
+          user_id?: string | null
+          water_quality?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_stations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_user_points: {
+        Args: {
+          user_id: string
+          points_to_add: number
+          activity_type: string
+          description: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -11,6 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import GamificationService, { ActivityType } from '@/services/GamificationService';
 
 // Fix for default marker icons in Leaflet with React
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -77,20 +80,10 @@ const LocationSelector = ({ position, setPosition }: { position: [number, number
   );
 };
 
-// Get the shared stations from localStorage or use default if not found
-const getStoredStations = () => {
-  try {
-    const stations = localStorage.getItem('refillia-stations');
-    return stations ? JSON.parse(stations) : null;
-  } catch (error) {
-    console.error('Error reading stations from localStorage:', error);
-    return null;
-  }
-};
-
 const AddStationForm: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [position, setPosition] = useState<[number, number]>([40.7128, -74.0060]); // Default to NYC
   const [name, setName] = useState('');
@@ -105,9 +98,32 @@ const AddStationForm: React.FC = () => {
   const [isAccessible, setIsAccessible] = useState(false);
   const [isColdWater, setIsColdWater] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to add a refill station.",
+        variant: "destructive"
+      });
+      navigate('/auth');
+    }
+  }, [user, navigate, toast]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to add a refill station.",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
     
     // Form validation
     if (!name || !address || !city || !state || !stationType || !description || !agreedToTerms) {
@@ -119,57 +135,90 @@ const AddStationForm: React.FC = () => {
       return;
     }
     
-    // Create station data object to be sent to API
-    const stationData = {
-      id: Date.now(), // Use timestamp as ID for now
-      name,
-      address: `${address}, ${city}, ${state}`,
-      city,
-      state,
-      description,
-      type: stationType,
-      position,
-      rating: 0, // Default rating for new stations
-      distance: "0 mi", // Will be calculated later
-      features: {
-        isOpen24_7,
-        isFiltered,
-        isBottleFriendly,
-        isAccessible,
-        isColdWater
-      }
-    };
+    setIsSubmitting(true);
     
-    console.log('Submitting station data:', stationData);
-    
-    // Store the new station in localStorage
     try {
-      // Get existing stations or use default
-      const existingStations = getStoredStations() || [];
+      // Prepare station data
+      const stationData = {
+        name,
+        description,
+        user_id: user.id,
+        address: `${address}, ${city}, ${state}`,
+        latitude: position[0],
+        longitude: position[1],
+        access_type: stationType,
+        water_quality: isFiltered ? 'Filtered' : 'Standard',
+        features: {
+          isOpen24_7,
+          isFiltered,
+          isBottleFriendly,
+          isAccessible,
+          isColdWater
+        }
+      };
       
-      // Add the new station
-      const updatedStations = [...existingStations, stationData];
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('water_stations')
+        .insert(stationData)
+        .select()
+        .single();
       
-      // Save back to localStorage
-      localStorage.setItem('refillia-stations', JSON.stringify(updatedStations));
+      if (error) throw error;
       
-      // Show success toast
+      // Add points for adding a station
+      await GamificationService.addPoints(
+        user.id,
+        ActivityType.STATION_ADDED,
+        `Added a new refill station: ${name}`
+      );
+      
+      // Also add to local storage for compatibility with existing code
+      try {
+        const storedStations = localStorage.getItem('refillia-stations');
+        const existingStations = storedStations ? JSON.parse(storedStations) : [];
+        
+        const newLocalStation = {
+          id: Date.now(),
+          name,
+          address: `${address}, ${city}, ${state}`,
+          type: stationType,
+          rating: 0,
+          distance: "0 mi",
+          position,
+          description,
+          features: {
+            isOpen24_7,
+            isFiltered,
+            isBottleFriendly,
+            isAccessible,
+            isColdWater
+          }
+        };
+        
+        localStorage.setItem('refillia-stations', JSON.stringify([...existingStations, newLocalStation]));
+      } catch (localError) {
+        console.error('Error updating localStorage:', localError);
+      }
+      
       toast({
-        title: "Station submitted successfully!",
-        description: "Thank you for contributing to Refillia. Your submission has been added.",
+        title: "Station added successfully!",
+        description: "Thank you for contributing to Refillia. Your submission has been added and you've earned points!",
       });
       
-      // Navigate back to map after a short delay
+      // Navigate to the map after a short delay
       setTimeout(() => {
         navigate('/map');
       }, 1500);
-    } catch (error) {
-      console.error('Error saving station:', error);
+    } catch (error: any) {
+      console.error('Error adding station:', error);
       toast({
-        title: "Error saving station",
-        description: "There was a problem saving your station. Please try again.",
+        title: "Error adding station",
+        description: error.message || "There was a problem saving your station. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -405,8 +454,12 @@ const AddStationForm: React.FC = () => {
                 </div>
               </div>
               
-              <Button type="submit" className="w-full bg-refillia-primary hover:bg-refillia-primary/90">
-                Submit Refill Station
+              <Button 
+                type="submit" 
+                className="w-full bg-refillia-primary hover:bg-refillia-primary/90"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Refill Station'}
               </Button>
             </div>
           </form>
