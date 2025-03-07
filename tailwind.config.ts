@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Refillia custom colors
+				refillia: {
+					'primary': '#33C3F0',
+					'secondary': '#4CAF50',
+					'light-blue': '#D3E4FD',
+					'light-green': '#F2FCE2',
 				}
 			},
 			borderRadius: {
