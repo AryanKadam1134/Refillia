@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Filter, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -90,11 +91,34 @@ const LocationButton = () => {
   );
 };
 
+// Component to set initial map center to user location
+const SetViewOnUserLocation = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          map.setView([latitude, longitude], 13);
+          console.log("Set view to user location:", latitude, longitude);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Fallback to default center if geolocation fails
+        }
+      );
+    }
+  }, [map]);
+  
+  return null;
+};
+
 const MapView: React.FC = () => {
   const [showList, setShowList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStations, setFilteredStations] = useState(dummyStations);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([39.8283, -98.5795]); // Center of the US
+  const [mapCenter, setMapCenter] = useState<[number, number]>([39.8283, -98.5795]); // Default center of the US
   const [mapZoom, setMapZoom] = useState(4);
 
   useEffect(() => {
@@ -144,11 +168,23 @@ const MapView: React.FC = () => {
                     Details
                   </Link>
                 </div>
+                <div className="mt-2">
+                  <a 
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.position[0]},${station.position[1]}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-refillia-primary hover:underline text-sm flex items-center"
+                  >
+                    <Navigation className="h-3 w-3 mr-1" />
+                    Get Directions
+                  </a>
+                </div>
               </div>
             </Popup>
           </Marker>
         ))}
         
+        <SetViewOnUserLocation />
         <LocationButton />
       </MapContainer>
       
@@ -209,6 +245,17 @@ const MapView: React.FC = () => {
                           <span className="text-yellow-400">★</span>
                         </div>
                       </div>
+                    </div>
+                    <div className="mt-2">
+                      <a 
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.position[0]},${station.position[1]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-refillia-primary hover:underline text-sm flex items-center"
+                      >
+                        <Navigation className="h-3 w-3 mr-1" />
+                        Get Directions
+                      </a>
                     </div>
                   </div>
                 </Link>

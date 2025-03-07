@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2 } from 'lucide-react';
+import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2, Navigation } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ const stationDetails = {
   hours: "24/7",
   description: "A public drinking fountain located near the entrance of Central Park. Clean water available for all visitors. The fountain provides cold, filtered water.",
   features: ["Wheelchair Accessible", "Bottle Friendly", "Filtered Water"],
+  coordinates: [40.785091, -73.968285], // Added coordinates
   reviews: [
     {
       id: 1,
@@ -74,6 +75,17 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId }) => {
             {stationDetails.status}
           </span>
         </div>
+        
+        {/* Get Directions Button */}
+        <a 
+          href={`https://www.google.com/maps/dir/?api=1&destination=${stationDetails.coordinates[0]},${stationDetails.coordinates[1]}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center mt-3 bg-refillia-primary text-white px-4 py-2 rounded-md hover:bg-refillia-primary/90 transition-colors"
+        >
+          <Navigation className="h-4 w-4 mr-2" />
+          Get Directions
+        </a>
       </div>
       
       {/* Station Images */}
