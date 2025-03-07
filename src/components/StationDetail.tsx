@@ -1,151 +1,140 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2, Navigation } from 'lucide-react';
+import { ChevronLeft, Star, Clock, MapPin, Droplet, ThumbsUp, ThumbsDown, Share2, Navigation, Loader2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
-// Dummy data for demonstration
-const dummyStations = [
-  {
-    id: 1,
-    name: "Central Park Fountain",
-    address: "Central Park, New York, NY",
-    type: "Public Fountain",
-    rating: 4.5,
-    status: "Open",
-    hours: "24/7",
-    description: "A public drinking fountain located near the entrance of Central Park. Clean water available for all visitors. The fountain provides cold, filtered water.",
-    features: ["Wheelchair Accessible", "Bottle Friendly", "Filtered Water"],
-    coordinates: [40.785091, -73.968285],
-    position: [40.785091, -73.968285],
-    reviews: [
-      {
-        id: 1,
-        user: "Jamie S.",
-        date: "2 weeks ago",
-        rating: 5,
-        comment: "Great water pressure and the water tastes clean. Very convenient location!",
-        avatar: "https://randomuser.me/api/portraits/women/33.jpg"
-      },
-      {
-        id: 2,
-        user: "Alex M.",
-        date: "1 month ago",
-        rating: 4,
-        comment: "Water is cold and refreshing. The area around the fountain could be cleaner though.",
-        avatar: "https://randomuser.me/api/portraits/men/54.jpg"
-      }
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1564466809058-bf4114d55352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1616903474236-ba3578973e3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-    ]
-  },
-  
-];
-
-// Get stations from localStorage or use dummy data if not found
-const getStations = () => {
-  try {
-    const stations = localStorage.getItem('refillia-stations');
-    if (stations) {
-      // Merge dummy data with stored stations
-      const storedStations = JSON.parse(stations);
-      return [...dummyStations, ...storedStations];
-    }
-    return dummyStations;
-  } catch (error) {
-    console.error('Error reading stations from localStorage:', error);
-    return dummyStations;
-  }
-};
-
-interface StationDetailProps {
-  stationId: number | null;
+interface Station {
+  id: string;
+  name: string;
+  address: string;
+  description: string;
+  verification_status: string;
+  created_at: string;
+  latitude: number;
+  longitude: number;
+  water_quality: string;
+  access_type: string;
+  is_private: boolean;
+  operating_hours?: Record<string, { isOpen: boolean; openTime: string; closeTime: string; }>;
+  features?: {
+    isFiltered: boolean;
+    isBottleFriendly: boolean;
+    isAccessible: boolean;
+    isColdWater: boolean;
+  };
 }
 
-const StationDetail: React.FC<StationDetailProps> = ({ stationId: propStationId }) => {
-  const params = useParams();
+const StationDetail: React.FC = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [stationDetails, setStationDetails] = useState<any>(null);
+  const [station, setStation] = useState<Station | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
-    // Get ID from props or URL params
-    const id = propStationId || Number(params.id);
-    
-    if (!id) {
-      navigate('/map');
-      return;
-    }
-    
-    // Find station with matching ID
-    const stations = getStations();
-    const station = stations.find((s: any) => s.id === id);
-    
-    if (station) {
-      // Format the station data
-      const formattedStation = {
-        ...station,
-        status: station.status || "Open",
-        hours: station.hours || (station.features?.isOpen24_7 ? "24/7" : "9 AM - 5 PM"),
-        coordinates: station.coordinates || station.position,
-        features: station.features ? [
-          ...(station.features.isFiltered ? ["Filtered Water"] : []),
-          ...(station.features.isBottleFriendly ? ["Bottle Friendly"] : []),
-          ...(station.features.isAccessible ? ["Wheelchair Accessible"] : []),
-          ...(station.features.isColdWater ? ["Cold Water"] : []),
-        ] : ["Filtered Water", "Bottle Friendly"],
-        reviews: station.reviews || [],
-        images: station.images || [
-          "https://images.unsplash.com/photo-1564466809058-bf4114d55352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-        ]
-      };
-      
-      setStationDetails(formattedStation);
-    } else {
-      // If station not found, navigate back to map
-      navigate('/map');
-    }
-    
-    setLoading(false);
-  }, [propStationId, params.id, navigate]);
-  
-  if (loading || !stationDetails) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    const fetchStationDetails = async () => {
+      if (!id) {
+        navigate('/map');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('water_stations')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        if (!data) {
+          navigate('/map');
+          return;
+        }
+
+        setStation(data);
+      } catch (error) {
+        console.error('Error fetching station:', error);
+        navigate('/map');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStationDetails();
+  }, [id, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
-  
+
+  if (!station) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Station not found
+      </div>
+    );
+  }
+
+  const getStationHours = () => {
+    if (!station.is_private) return "Public Access";
+    if (!station.operating_hours) return "Hours not specified";
+
+    return Object.entries(station.operating_hours)
+      .map(([day, schedule]) => 
+        schedule.isOpen 
+          ? `${day}: ${schedule.openTime} - ${schedule.closeTime}`
+          : `${day}: Closed`
+      )
+      .join('\n');
+  };
+
+  const getFeatures = () => {
+    const features = [];
+    if (station.water_quality === 'Filtered') features.push('Filtered Water');
+    if (station.features?.isBottleFriendly) features.push('Bottle Friendly');
+    if (station.features?.isAccessible) features.push('Wheelchair Accessible');
+    if (station.features?.isColdWater) features.push('Cold Water');
+    return features;
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Link to="/map" className="inline-flex items-center text-gray-600 hover:text-refillia-primary mb-6">
         <ChevronLeft className="h-5 w-5 mr-1" />
         Back to Map
       </Link>
-      
+
       {/* Station Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">{stationDetails.name}</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">{station.name}</h1>
         <div className="flex items-center text-gray-600 mb-2">
           <MapPin className="h-4 w-4 mr-1" />
-          <span>{stationDetails.address}</span>
+          <span>{station.address}</span>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
-            <Star className="h-4 w-4 text-yellow-400 mr-1" fill="currentColor" />
-            <span>{stationDetails.rating} ({stationDetails.reviews.length || 0} reviews)</span>
-          </div>
-          <div className="flex items-center">
             <Clock className="h-4 w-4 mr-1" />
-            <span>{stationDetails.hours}</span>
+            <span>{station.is_private ? 'Private' : 'Public'} Station</span>
           </div>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            {stationDetails.status}
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            station.verification_status === 'approved' 
+              ? 'bg-green-100 text-green-800'
+              : station.verification_status === 'rejected'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {station.verification_status.charAt(0).toUpperCase() + station.verification_status.slice(1)}
           </span>
         </div>
-        
+
         {/* Get Directions Button */}
         <a 
-          href={`https://www.google.com/maps/dir/?api=1&destination=${stationDetails.coordinates[0]},${stationDetails.coordinates[1]}`}
+          href={`https://www.google.com/maps/dir/?api=1&destination=${station.latitude},${station.longitude}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center mt-3 bg-refillia-primary text-white px-4 py-2 rounded-md hover:bg-refillia-primary/90 transition-colors"
@@ -154,28 +143,25 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId: propStationId 
           Get Directions
         </a>
       </div>
-      
-      {/* Station Images */}
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        {stationDetails.images.map((image: string, index: number) => (
-          <img 
-            key={index}
-            src={image} 
-            alt={`${stationDetails.name} - Image ${index + 1}`} 
-            className="h-48 w-full object-cover rounded-lg"
-          />
-        ))}
-      </div>
-      
+
       {/* Station Description & Features */}
       <Card className="mb-6">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold mb-2">About this Station</h2>
-          <p className="text-gray-700 mb-4">{stationDetails.description}</p>
-          
+          <p className="text-gray-700 mb-4">{station.description}</p>
+
+          {station.is_private && (
+            <div className="mb-4">
+              <h3 className="font-medium mb-2">Operating Hours:</h3>
+              <pre className="whitespace-pre-wrap text-sm text-gray-600">
+                {getStationHours()}
+              </pre>
+            </div>
+          )}
+
           <h3 className="font-medium mb-2">Features:</h3>
           <div className="flex flex-wrap gap-2">
-            {stationDetails.features.map((feature: string, index: number) => (
+            {getFeatures().map((feature, index) => (
               <span 
                 key={index}
                 className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-refillia-light-blue text-refillia-primary"
@@ -187,7 +173,7 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId: propStationId 
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Action Buttons */}
       <div className="flex items-center justify-between mb-8">
         <Button variant="outline" size="sm" className="flex items-center">
@@ -196,56 +182,11 @@ const StationDetail: React.FC<StationDetailProps> = ({ stationId: propStationId 
         </Button>
         <Button variant="outline" size="sm" className="flex items-center">
           <ThumbsDown className="h-4 w-4 mr-1" />
-          Not Accurate
+          Report Issue
         </Button>
         <Button variant="outline" size="sm" className="flex items-center">
           <Share2 className="h-4 w-4 mr-1" />
           Share
-        </Button>
-      </div>
-      
-      {/* Reviews */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Reviews</h2>
-        <div className="space-y-4">
-          {stationDetails.reviews.length > 0 ? (
-            stationDetails.reviews.map((review: any) => (
-              <div key={review.id} className="border-b pb-4">
-                <div className="flex items-start">
-                  <img 
-                    src={review.avatar} 
-                    alt={review.user} 
-                    className="w-10 h-10 rounded-full mr-3 object-cover"
-                  />
-                  <div>
-                    <div className="flex items-center mb-1">
-                      <h4 className="font-medium text-gray-800 mr-2">{review.user}</h4>
-                      <span className="text-sm text-gray-500">{review.date}</span>
-                    </div>
-                    <div className="flex items-center mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i}
-                          className="h-4 w-4 mr-1" 
-                          fill={i < review.rating ? '#FFD700' : 'none'} 
-                          stroke={i < review.rating ? '#FFD700' : 'currentColor'}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-gray-700">{review.comment}</p>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500 py-4">
-              No reviews yet. Be the first to review this station!
-            </div>
-          )}
-        </div>
-        
-        <Button className="w-full mt-6 bg-refillia-primary hover:bg-refillia-primary/90">
-          Write a Review
         </Button>
       </div>
     </div>
