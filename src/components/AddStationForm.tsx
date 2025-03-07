@@ -138,7 +138,7 @@ const AddStationForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Prepare station data
+      // Prepare station data - Remove features object and add relevant fields directly
       const stationData = {
         name,
         description,
@@ -148,13 +148,14 @@ const AddStationForm: React.FC = () => {
         longitude: position[1],
         access_type: stationType,
         water_quality: isFiltered ? 'Filtered' : 'Standard',
-        features: {
-          isOpen24_7,
-          isFiltered,
-          isBottleFriendly,
-          isAccessible,
-          isColdWater
-        }
+        // Store features in description instead
+        description: `${description}\n\nFeatures:\n${[
+          isOpen24_7 ? '- Open 24/7' : '',
+          isFiltered ? '- Filtered water' : '',
+          isBottleFriendly ? '- Bottle friendly' : '',
+          isAccessible ? '- Wheelchair accessible' : '',
+          isColdWater ? '- Cold water' : ''
+        ].filter(Boolean).join('\n')}`
       };
       
       // Insert into Supabase
