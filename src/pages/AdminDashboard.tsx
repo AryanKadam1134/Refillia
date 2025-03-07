@@ -19,10 +19,18 @@ interface Station {
   id: string;
   name: string;
   address: string;
+  description: string;
   verification_status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   admin_notes?: string;
   user_id: string;
+  latitude: number;
+  longitude: number;
+  profiles?: {
+    username?: string;
+    id?: string;
+    role?: string;
+  };
 }
 
 const AdminDashboard = () => {
@@ -37,11 +45,25 @@ const AdminDashboard = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('water_stations')
-        .select('*')
+        .select(`
+          *,
+          creator:user_id (
+            username,
+            id,
+            role
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStations(data || []);
+
+      // Transform the data to match your Station interface
+      const transformedData = data?.map(station => ({
+        ...station,
+        profiles: station.creator || { username: 'Unknown' }
+      })) || [];
+
+      setStations(transformedData);
     } catch (error: any) {
       console.error('Error fetching stations:', error);
       setConnectionError(true);
@@ -161,11 +183,14 @@ const AdminDashboard = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="w-[150px]">Name</TableHead>
+            <TableHead className="w-[200px]">Address</TableHead>
+            <TableHead className="w-[300px]">Description</TableHead>
+            <TableHead className="w-[150px]">Added By</TableHead>
+            <TableHead className="w-[150px]">Location</TableHead>
+            <TableHead className="w-[100px]">Status</TableHead>
+            <TableHead className="w-[150px]">Created At</TableHead>
+            <TableHead className="w-[250px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -173,6 +198,22 @@ const AdminDashboard = () => {
             <TableRow key={station.id}>
               <TableCell>{station.name}</TableCell>
               <TableCell>{station.address}</TableCell>
+              <TableCell className="max-w-[300px]">
+                <div className="line-clamp-3">{station.description}</div>
+              </TableCell>
+              <TableCell>
+                {station.creator?.username || station.profiles?.username || 'Unknown User'}
+              </TableCell>
+              <TableCell>
+                <a
+                  href={`https://www.google.com/maps?q=${station.latitude},${station.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-700 underline"
+                >
+                  View on Map
+                </a>
+              </TableCell>
               <TableCell>
                 <Badge variant={
                   station.verification_status === 'approved' ? 'success' :
