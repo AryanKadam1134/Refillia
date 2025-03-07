@@ -153,21 +153,20 @@ const AddStationForm: React.FC = () => {
     try {
       const stationData = {
         name,
-        description,
+        description, // Just use the description as-is
         user_id: user.id,
         address: `${address}, ${city}, ${state}`,
         latitude: position[0],
         longitude: position[1],
         access_type: stationType,
         water_quality: isFiltered ? 'Filtered' : 'Standard',
-        description: `${description}\n\nFeatures:\n${[
-          isFiltered ? '- Filtered water' : '',
-          isBottleFriendly ? '- Bottle friendly' : '',
-          isAccessible ? '- Wheelchair accessible' : '',
-          isColdWater ? '- Cold water' : ''
-        ].filter(Boolean).join('\n')}`,
+        features: {
+          isFiltered: isFiltered,
+          isBottleFriendly: isBottleFriendly,
+          isAccessible: isAccessible,
+          isColdWater: isColdWater
+        },
         is_private: stationType === 'private',
-        // Add operating hours for private stations
         operating_hours: stationType === 'private' ? 
           Object.entries(operatingHours).reduce((acc, [day, schedule]) => ({
             ...acc,

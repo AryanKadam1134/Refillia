@@ -190,10 +190,18 @@ const StationDetail: React.FC = () => {
 
   const getFeatures = () => {
     const features = [];
-    if (station.water_quality === 'Filtered') features.push('Filtered Water');
-    if (station.features?.isBottleFriendly) features.push('Bottle Friendly');
-    if (station.features?.isAccessible) features.push('Wheelchair Accessible');
-    if (station.features?.isColdWater) features.push('Cold Water');
+    if (station.water_quality === 'Filtered' || station.features?.isFiltered) {
+      features.push('Filtered Water');
+    }
+    if (station.features?.isBottleFriendly) {
+      features.push('Bottle Friendly');
+    }
+    if (station.features?.isAccessible) {
+      features.push('Wheelchair Accessible');
+    }
+    if (station.features?.isColdWater) {
+      features.push('Cold Water');
+    }
     return features;
   };
 
@@ -350,6 +358,9 @@ const StationDetail: React.FC = () => {
                       {feature}
                     </span>
                   ))}
+                  {getFeatures().length === 0 && (
+                    <span className="text-gray-500">No features specified</span>
+                  )}
                 </div>
               </div>
             </>
