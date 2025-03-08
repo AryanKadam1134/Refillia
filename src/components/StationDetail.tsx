@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import OperatingHoursSection from '@/components/OperatingHoursSection';
+import { RefillButton } from './RefillButton';
+import { ReviewSection } from './ReviewSection';
 
 interface Station {
   id: string;
@@ -401,19 +403,26 @@ const StationDetail: React.FC = () => {
       {/* Action Buttons - Only show if user is logged in */}
       {user && (
         <div className="flex items-center justify-between mb-8">
+          <RefillButton stationId={station.id} userId={user.id} />
           <Button variant="outline" size="sm" className="flex items-center">
             <ThumbsUp className="h-4 w-4 mr-1" />
             Helpful
-          </Button>
-          <Button variant="outline" size="sm" className="flex items-center">
-            <ThumbsDown className="h-4 w-4 mr-1" />
-            Report Issue
           </Button>
           <Button variant="outline" size="sm" className="flex items-center">
             <Share2 className="h-4 w-4 mr-1" />
             Share
           </Button>
         </div>
+      )}
+
+      {/* Add Review Section */}
+      {user && (
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Write a Review</h2>
+            <ReviewSection stationId={station.id} userId={user.id} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Show login prompt if user is not authenticated */}

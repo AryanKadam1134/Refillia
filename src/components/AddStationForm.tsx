@@ -13,7 +13,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import GamificationService, { ActivityType } from '@/services/GamificationService';
+import gamificationService, { ActivityType } from '@/services/GamificationService';
 import StationTypeDialog from './StationTypeDialog';
 import OperatingHoursSection from './OperatingHoursSection';
 
@@ -192,8 +192,8 @@ const AddStationForm: React.FC = () => {
       
       if (error) throw error;
       
-      // Add points for adding a station
-      await GamificationService.addPoints(
+      // Add points and update stats
+      await gamificationService.addPoints(
         user.id,
         ActivityType.STATION_ADDED,
         `Added a new refill station: ${name}`

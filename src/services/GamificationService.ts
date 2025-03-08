@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Activity types for the gamification system
@@ -29,52 +28,57 @@ const ACTION_DESCRIPTIONS = {
 };
 
 class GamificationService {
+  // Add this method to get points for an activity
+  private getPointsForActivity(activityType: ActivityType): number {
+    return POINTS[activityType] || 0;
+  }
+
   /**
    * Add points for a user activity and check for unlocked achievements
    */
-  async addPoints(userId: string, activityType: ActivityType, customDescription?: string) {
-    if (!userId) return;
-    
+  async addPoints(userId: string, activityType: ActivityType, description: string) {
     try {
-      const points = POINTS[activityType];
-      const description = customDescription || ACTION_DESCRIPTIONS[activityType];
+      // Add points
+      const points = this.getPointsForActivity(activityType);
       
-      // Call the Supabase function to update points
-      await supabase.rpc('update_user_points', {
+      const { error: pointsError } = await supabase.rpc('update_user_points', {
         user_id: userId,
         points_to_add: points,
         activity_type: activityType,
-        description: description
+        description
       });
-      
-      // Update the specific count based on activity type
-      if (activityType === ActivityType.STATION_ADDED) {
-        await supabase
-          .from('profiles')
-          .update({ stations_added: supabase.rpc('increment', { x: 1 }) })
-          .eq('id', userId);
-      } else if (activityType === ActivityType.REVIEW_ADDED) {
-        await supabase
-          .from('profiles')
-          .update({ reviews_added: supabase.rpc('increment', { x: 1 }) })
-          .eq('id', userId);
-      } else if (activityType === ActivityType.REFILL_LOGGED) {
-        await supabase
-          .from('profiles')
-          .update({ refills_logged: supabase.rpc('increment', { x: 1 }) })
-          .eq('id', userId);
-      }
-      
-      // Check for new achievements
+
+      if (pointsError) throw pointsError;
+
+      // Update stats
+      await this.updateUserStats(userId, activityType);
+
+      // Check achievements
       await this.checkAchievements(userId);
-      
-      return { success: true };
     } catch (error) {
-      console.error('Error adding points:', error);
-      return { success: false, error };
+      console.error('Error in addPoints:', error);
+      throw error;
     }
   }
-  
+
+  async updateUserStats(userId: string, activityType: ActivityType) {
+    try {
+      switch (activityType) {
+        case ActivityType.STATION_ADDED:
+          await supabase.rpc('increment_user_stations', { user_id: userId });
+          break;
+        case ActivityType.REFILL_LOGGED:
+          await supabase.rpc('increment_user_refills', { user_id: userId });
+          break;
+        case ActivityType.REVIEW_ADDED:
+          await supabase.rpc('increment_user_reviews', { user_id: userId });
+          break;
+      }
+    } catch (error) {
+      console.error('Error updating user stats:', error);
+    }
+  }
+
   /**
    * Check if user has unlocked any new achievements
    */
@@ -167,4 +171,6 @@ class GamificationService {
   }
 }
 
-export default new GamificationService();
+// Export a singleton instance
+const gamificationService = new GamificationService();
+export default gamificationService;
