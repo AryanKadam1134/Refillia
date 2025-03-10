@@ -1,69 +1,72 @@
-# Welcome to your Lovable project
+# **Refillia**  
 
-## Project info
+## 🚀 Project Description  
+Refillia is a crowdsourced web platform that maps and promotes free water refill stations, encouraging individuals to reduce plastic bottle waste. Users can discover nearby refill stations, contribute new locations, and provide feedback on water quality. The platform gamifies user engagement through a reward system, motivating sustainable behavior. Refillia also offers businesses the opportunity to list their refill stations, enhancing their eco-friendly branding while increasing foot traffic.  
 
-**URL**: https://lovable.dev/projects/3bc1b213-fff8-4bf7-932e-f22006c800f2
+## 🎯 Link to Project  
+[Live Link](https://team-deployers.vercel.app/)  
 
-## How can I edit this code?
+## 🛠 Tech Stack  
+- **Frontend:** React.js, Tailwind CSS  
+- **Backend:** Node.js, Express.js  
+- **Database:** Supabase  
+- **Authentication:** Supabase Auth  
+- **Maps & Location Services:** React leaflet & OpenStreetMap
+- **Deployment:** Vercel (Frontend)
 
-There are several ways of editing your application.
+## 📷 Snapshots
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/15349412-2abf-496b-ae13-53b19a5d89a7" width="150"></td>
+    <td><img src="https://github.com/user-attachments/assets/7330194a-4f0f-40bd-8d00-96b44b8504b1" width="150"></td>
+    <td><img src="https://github.com/user-attachments/assets/9e4d947e-b875-478e-8cd4-1a5ba8fe07a4" width="150"></td>
+    <td><img src="https://github.com/user-attachments/assets/91dbacf0-63a3-4b47-ae3c-220a6507cd3e" width="150"></td>
+    <td><img src="https://github.com/user-attachments/assets/303c3d92-1611-4896-8ce1-31b5ec2e8186" width="150"></td>
+  </tr>
+</table>
 
-**Use Lovable**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3bc1b213-fff8-4bf7-932e-f22006c800f2) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
 
-**Use your preferred IDE**
+## 📦 Prerequisites  
+Before running the project, ensure you have the following installed:  
+- **Node.js** (v16+)  
+- **npm** (v8+)  
+- **Supabase Account**   
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🔧 Installation & Setup  
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Clone the repository:**  
+   ```bash
+   git clone https://github.com/your-repo/refillia.git  
+   cd refillia  
+   ```  
+   
+2. **Install dependencies:**  
+   ```bash
+   in root folder
+   npm install  
+   ```  
 
-Follow these steps:
+3. **Configure Environment Variables:**  
+   - Create a `.env` in root folder  
+   - Add necessary configuration details:  
+     ```
+     VITE_SUPABASE_URL=your_supabase_url
+     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+4. **Run the Application:**  
+   ```bash
+   # Start frontend  
+   npm start  
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+   
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 👥 Team Members  
+1. [Raj Desai](https://github.com/rajdesai17)  
+2. [Aryan Kadam](https://github.com/AryanKadam1134)  
+3. [Suyog Rawool](https://github.com/warangadvaitAW)  
+4. [Advait Warang](https://github.com/suyograwool)  
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/3bc1b213-fff8-4bf7-932e-f22006c800f2) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+**Made with ❤️ at BeachHack 6**
